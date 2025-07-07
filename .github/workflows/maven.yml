@@ -31,11 +31,32 @@ jobs:
     - uses: actions/checkout@v4
     - name: Trivy Installation
       run: |
-        sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+        # Retry apt-get update
+        until sudo apt-get update; do
+          echo "Waiting for apt lock..."
+          sleep 5
+        done
+
+        # Retry installing dependencies
+        until sudo apt-get install -y wget apt-transport-https gnupg lsb-release; do
+          echo "Retrying dependency install..."
+          sleep 5
+        done
+
         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
         echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update -y
-        sudo apt-get install -y trivy
+
+        # Retry apt-get update again
+        until sudo apt-get update; do
+          echo "Retrying apt-get update after adding Trivy repo..."
+          sleep 5
+        done
+
+        # Retry Trivy install
+        until sudo apt-get install -y trivy; do
+          echo "Retrying Trivy install..."
+          sleep 5
+        done
 
     - name: Trivy FS Scan
       run: trivy fs --format table -o fs-report.json .
